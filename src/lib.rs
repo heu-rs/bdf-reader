@@ -6,9 +6,11 @@
 use std::io;
 use thiserror::Error;
 
+mod font;
 mod reader;
 mod tokens;
 
+pub use font::{BoundingBox, Font, Size};
 use reader::State;
 use tokens::Token;
 
@@ -21,5 +23,14 @@ pub enum Error {
 	SyntaxError(#[from] tokens::Error),
 
 	#[error("The token {0:?} may only appear in {2:?}, but is in {1:?}")]
-	InvalidContext(Token, State, State)
+	InvalidContext(Token, State, State),
+
+	#[error("Missing font name")]
+	MissingFontName,
+
+	#[error("Missing font size")]
+	MissingFontSize,
+
+	#[error("Missing font bounding box")]
+	MissingFontBoundingBox
 }

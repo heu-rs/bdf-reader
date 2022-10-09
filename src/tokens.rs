@@ -1,6 +1,3 @@
-// TODO remove this
-#![allow(dead_code)]
-
 use paste::paste;
 use std::str::FromStr;
 use thiserror::Error;
@@ -18,6 +15,7 @@ macro_rules! tokens {
 	) => {
 		paste! {
 			$(#[doc$($doc)*])*
+			#[allow(clippy::derive_partial_eq_without_eq)]
 			#[derive(Clone, Debug, PartialEq)]
 			$vis enum $ident {
 				$(
@@ -30,7 +28,11 @@ macro_rules! tokens {
 			pub enum Error {
 				$(
 					$(
-						#[error("Failed to parse argument: {0}")]
+						#[error(
+							"Failed to parse argument {} of tag {}: {0}",
+							stringify!($arg),
+							$tag
+						)]
 						[<$variant $arg:camel>](#[source] <$arg_ty as FromStr>::Err),
 					)*
 				)*
