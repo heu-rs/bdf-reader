@@ -1,0 +1,16 @@
+# rust/cargo
+/target/
+/Cargo.lock
+
+# git
+*.orig
+
+# emacs
+*~
+\#*#
+.#*#
+
+# intellij
+/.idea/
+*.ipr
+*.iml
