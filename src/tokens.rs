@@ -1,6 +1,22 @@
 #![allow(dead_code)]
 
+#[cfg(not(test))]
 macro_rules! tokens {
+	($($tt:tt)*) => {
+		tokens_impl!($($tt)*);
+	}
+}
+
+#[cfg(test)]
+macro_rules! tokens {
+	($($tt:tt)*) => {
+		tokens_impl!($($tt)*);
+		tokens_tests!($($tt)*);
+	}
+}
+
+macro_rules! tokens_impl {
+	// keep this in sync with tokens_tests!
 	(
 		$(#[doc$($doc:tt)*])*
 		$vis:vis enum $ident:ident {
@@ -24,20 +40,40 @@ macro_rules! tokens {
 		$vis struct Error;
 
 		impl $ident {
-			$vis fn parse_line(_line: &str) -> Result<Self, Error> {
-				unimplemented!()
+			$vis fn parse_line(line: &str) -> Result<Self, Error> {
+				let mut tokens = line.split(|ch: char| ch.is_ascii_whitespace()).peekable();
+				$(
+					if tokens.peek() == Some(&$tag) {
+						_ = tokens.next();
+						$(
+							let $arg: $arg_ty = tokens.next().ok_or(Error)?.parse().map_err(|_| Error)?;
+						)*
+						return Ok(Self::$variant { $($arg),* });
+					}
+				)*
+
+				return Err(Error);
 			}
 		}
+	};
+}
 
-		// TODO potentially only codegen this when tests are enabled and use paste?
-		#[cfg(test)]
-		mod tests {
-			use super::$ident;
-
+#[cfg(test)]
+macro_rules! tokens_tests {
+	(
+		$(#[doc$($doc:tt)*])*
+		$vis:vis enum $ident:ident {
+			$(
+				$(#[doc$($variant_doc:tt)*])*
+				$(#[test($test_input:literal, $test_expected:expr)])*
+				$variant:ident { $tag:literal $(, $arg:ident: $arg_ty:ty)* }
+			),*
+		}
+	) => {
+		paste::paste! {
 			$(
 				#[test]
-				#[allow(non_snake_case)]
-				fn $variant() {
+				fn [<test_ $ident:lower _parse_ $variant:lower>]() {
 					$(
 						let expected: $ident = {
 							use $ident::*;
