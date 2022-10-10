@@ -3,14 +3,14 @@
 #![deny(unreachable_pub)]
 #![forbid(elided_lifetimes_in_paths, unsafe_code)]
 
-use std::io;
+use std::{io, str::FromStr};
 use thiserror::Error;
 
 mod font;
 mod reader;
 mod tokens;
 
-pub use font::{BoundingBox, Font, Size};
+pub use font::{BoundingBox, Font, Size, Value};
 use reader::State;
 use tokens::Token;
 
@@ -32,5 +32,8 @@ pub enum Error {
 	MissingFontSize,
 
 	#[error("Missing font bounding box")]
-	MissingFontBoundingBox
+	MissingFontBoundingBox,
+
+	#[error("Invalid Property Value: {0}. Note that strings need to be quoted.")]
+	InvalidPropertyValue(#[source] <i32 as FromStr>::Err)
 }

@@ -1,5 +1,5 @@
-use crate::{tokens::Token, BoundingBox, Error, Font, Size};
-use std::io::BufRead;
+use crate::{tokens::Token, BoundingBox, Error, Font, Size, Value};
+use std::{collections::HashMap, io::BufRead};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum State {
@@ -26,10 +26,36 @@ impl Font {
 		let mut font_name = None;
 		let mut font_bbox = None;
 		let mut font_size = None;
+		let mut font_properties = HashMap::new();
 
 		let mut state = State::Initial;
 		for line in reader.lines() {
-			let token = match Token::parse_line(&line?)? {
+			let line = line?;
+
+			match state {
+				State::Properties { len } if len > 0 => {
+					let idx: usize = line
+						.chars()
+						.take_while(|ch| !ch.is_ascii_whitespace())
+						.map(|ch| ch.len_utf8())
+						.sum();
+					let key = &line[0 .. idx];
+					let value_str = &line[idx + 1 ..];
+					let value = if value_str.starts_with('"') && value_str.ends_with('"')
+					{
+						Value::String(value_str.trim_matches('"').replace("''", "\""))
+					} else {
+						Value::Integer(
+							value_str.parse().map_err(Error::InvalidPropertyValue)?
+						)
+					};
+					font_properties.insert(key.to_owned(), value);
+					continue;
+				},
+				_ => {}
+			}
+
+			let token = match Token::parse_line(&line)? {
 				Some(token) => token,
 				None => continue
 			};
@@ -70,10 +96,18 @@ impl Font {
 					});
 				},
 
-				// ignored
-				Token::Comment { .. } => {},
+				Token::StartProperties { n } => {
+					assert_state(&token, state, State::Font)?;
+					state = State::Properties { len: n };
+				},
 
-				_ => unimplemented!()
+				Token::EndProperties {} => {
+					assert_state(&token, state, State::Properties { len: 0 })?;
+					state = State::Font;
+				},
+
+				// ignored
+				Token::Comment { .. } => {}
 			};
 		}
 
@@ -81,7 +115,8 @@ impl Font {
 			version: font_version,
 			name: font_name.ok_or(Error::MissingFontName)?,
 			bbox: font_bbox.ok_or(Error::MissingFontBoundingBox)?,
-			size: font_size.ok_or(Error::MissingFontSize)?
+			size: font_size.ok_or(Error::MissingFontSize)?,
+			properties: font_properties
 		})
 	}
 }

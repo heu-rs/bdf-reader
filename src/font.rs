@@ -1,3 +1,8 @@
+use std::{
+	collections::HashMap,
+	fmt::{self, Debug, Display, Formatter}
+};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BoundingBox {
 	pub width: u32,
@@ -13,11 +18,36 @@ pub struct Size {
 	pub yres: u32
 }
 
+#[derive(Clone)]
+pub enum Value {
+	Integer(i32),
+	String(String)
+}
+
+impl Debug for Value {
+	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Integer(i) => write!(f, "{i}"),
+			Self::String(str) => write!(f, "{str:?}")
+		}
+	}
+}
+
+impl Display for Value {
+	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Integer(i) => write!(f, "{i}"),
+			Self::String(str) => write!(f, "{str}")
+		}
+	}
+}
+
 pub struct Font {
 	pub(crate) version: Option<i32>,
 	pub(crate) name: String,
 	pub(crate) bbox: BoundingBox,
-	pub(crate) size: Size
+	pub(crate) size: Size,
+	pub(crate) properties: HashMap<String, Value>
 }
 
 impl Font {
@@ -39,5 +69,10 @@ impl Font {
 	/// Get the size of the font.
 	pub fn size(&self) -> Size {
 		self.size
+	}
+
+	/// Get a property of the font.
+	pub fn property(&self, key: &str) -> Option<&Value> {
+		self.properties.get(key)
 	}
 }
