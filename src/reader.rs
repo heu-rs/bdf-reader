@@ -10,7 +10,10 @@ pub enum State {
 	Font,
 
 	/// Inside the font's properties, with `len` properties remaining.
-	Properties { len: usize }
+	Properties { len: usize },
+
+	/// Inside the font's chars, with `len` glyphs remaining.
+	Chars { len: usize }
 }
 
 fn assert_state(token: &Token, actual: State, expected: State) -> Result<(), Error> {
@@ -32,8 +35,8 @@ impl Font {
 		for line in reader.lines() {
 			let line = line?;
 
-			match state {
-				State::Properties { len } if len > 0 => {
+			match &mut state {
+				State::Properties { len } if *len > 0 => {
 					let idx: usize = line
 						.chars()
 						.take_while(|ch| !ch.is_ascii_whitespace())
@@ -50,6 +53,8 @@ impl Font {
 						)
 					};
 					font_properties.insert(key.to_owned(), value);
+
+					*len -= 1;
 					continue;
 				},
 				_ => {}
@@ -104,6 +109,11 @@ impl Font {
 				Token::EndProperties {} => {
 					assert_state(&token, state, State::Properties { len: 0 })?;
 					state = State::Font;
+				},
+
+				Token::Chars { nglyphs } => {
+					assert_state(&token, state, State::Font)?;
+					state = State::Chars { len: nglyphs };
 				},
 
 				// ignored

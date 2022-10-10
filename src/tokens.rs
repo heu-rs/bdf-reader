@@ -106,6 +106,7 @@ macro_rules! tokens {
 	};
 }
 
+// https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
 tokens! {
 	pub enum Token {
 		/// `STARTFONT` is followed by a version number indicating the exact file format
@@ -160,6 +161,12 @@ tokens! {
 		/// The word `ENDPROPERTIES` is used to delimit the end of the optional properties
 		/// list in fonts files containing the word `STARTPROPERTIES`.
 		#[test("ENDPROPERTIES", EndProperties {})]
-		EndProperties { "ENDPROPERTIES" }
+		EndProperties { "ENDPROPERTIES" },
+
+		/// `CHARS` is followed by *nglyphs*, the number of glyphs that follow. To make
+		/// sure that the correct number of glyphs were actually read and processed, error
+		/// checking is recommended at the end of the file
+		#[test("CHARS 1", Chars { nglyphs: 1 })]
+		Chars { "CHARS", nglyphs: usize }
 	}
 }
