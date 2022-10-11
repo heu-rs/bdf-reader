@@ -167,6 +167,30 @@ tokens! {
 		/// sure that the correct number of glyphs were actually read and processed, error
 		/// checking is recommended at the end of the file
 		#[test("CHARS 1", Chars { nglyphs: 1 })]
-		Chars { "CHARS", nglyphs: usize }
+		Chars { "CHARS", nglyphs: usize },
+
+		/// The word `STARTCHAR` followed by a string containing the name for the
+		/// glyph. In base fonts, this should correspond to the name in the PostScript
+		/// language outline font’s encoding vector. In a Composite font (Type 0), the
+		/// value may be a numeric offset or glyph ID.
+		#[test("STARTCHAR U+0041", StartChar { name: "U+0041".into() })]
+		StartChar { "STARTCHAR", name: String },
+
+		/// `ENCODING` is followed by a positive integer representing the Adobe Standard
+		/// Encoding value. If the character is not in the Adobe Standard Encoding,
+		/// `ENCODING` is followed by –1 and optionally by another integer specifying
+		/// the glyph index for the non-standard encoding.
+		// TODO represent the optional encoding value
+		#[test("ENCODING 65", Encoding { enc: 65 })]
+		Encoding { "ENCODING", enc: u32 },
+
+		/// `ENDCHAR` delimits the end of the glyph description
+		#[test("ENDCHAR", EndChar {})]
+		EndChar { "ENDCHAR" },
+
+		/// The entire file is terminated with the word `ENDFONT`. If this is encountered
+		/// before all of the glyphs have been read, it is an error cond
+		#[test("ENDFONT", EndFont {})]
+		EndFont { "ENDFONT"}
 	}
 }

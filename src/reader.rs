@@ -1,5 +1,8 @@
-use crate::{tokens::Token, BoundingBox, Error, Font, Size, Value};
-use std::{collections::HashMap, io::BufRead};
+use crate::{tokens::Token, BoundingBox, Error, Font, Glyph, Size, Value};
+use std::{
+	collections::{BTreeSet, HashMap},
+	io::BufRead
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum State {
@@ -13,14 +16,51 @@ pub enum State {
 	Properties { len: usize },
 
 	/// Inside the font's chars, with `len` glyphs remaining.
-	Chars { len: usize }
+	Chars { len: usize },
+
+	/// Inside one of the font's chars, with `chars` glyphs remaining including the
+	/// current one.
+	Glyph { chars: usize },
+
+	/// Final state
+	Final
 }
 
-fn assert_state(token: &Token, actual: State, expected: State) -> Result<(), Error> {
-	if actual != expected {
-		return Err(Error::InvalidContext(token.clone(), actual, expected));
+impl State {
+	fn assert_initial(self, token: &Token) -> Result<(), Error> {
+		match self {
+			Self::Initial => Ok(()),
+			_ => Err(Error::InvalidContext(token.clone(), self, "Initial"))
+		}
 	}
-	Ok(())
+
+	fn assert_font(self, token: &Token) -> Result<(), Error> {
+		match self {
+			Self::Font => Ok(()),
+			_ => Err(Error::InvalidContext(token.clone(), self, "Font"))
+		}
+	}
+
+	fn assert_properties(self, token: &Token) -> Result<usize, Error> {
+		match self {
+			Self::Properties { len } => Ok(len),
+			_ => Err(Error::InvalidContext(token.clone(), self, "Properties"))
+		}
+	}
+
+	fn assert_chars(self, token: &Token) -> Result<usize, Error> {
+		match self {
+			Self::Chars { len } => Ok(len),
+			_ => Err(Error::InvalidContext(token.clone(), self, "Chars"))
+		}
+	}
+
+	fn assert_glyph(self, token: &Token) -> Result<usize, Error> {
+		match self {
+			Self::Glyph { chars } => Ok(chars),
+			_ => Err(Error::InvalidContext(token.clone(), self, "Glyph"))
+		}
+	}
 }
 
 impl Font {
@@ -30,6 +70,10 @@ impl Font {
 		let mut font_bbox = None;
 		let mut font_size = None;
 		let mut font_properties = HashMap::new();
+		let mut font_glyphs = BTreeSet::new();
+
+		let mut glyph_name = None;
+		let mut glyph_encoding = None;
 
 		let mut state = State::Initial;
 		for line in reader.lines() {
@@ -44,15 +88,14 @@ impl Font {
 						.sum();
 					let key = &line[0 .. idx];
 					let value_str = &line[idx + 1 ..];
-					let value = if value_str.starts_with('"') && value_str.ends_with('"')
-					{
+					let v = if value_str.starts_with('"') && value_str.ends_with('"') {
 						Value::String(value_str.trim_matches('"').replace("''", "\""))
 					} else {
 						Value::Integer(
 							value_str.parse().map_err(Error::InvalidPropertyValue)?
 						)
 					};
-					font_properties.insert(key.to_owned(), value);
+					font_properties.insert(key.to_owned(), v);
 
 					*len -= 1;
 					continue;
@@ -67,22 +110,22 @@ impl Font {
 
 			match token {
 				Token::StartFont { .. } => {
-					assert_state(&token, state, State::Initial)?;
+					state.assert_initial(&token)?;
 					state = State::Font;
 				},
 
 				Token::ContentVersion { ver } => {
-					assert_state(&token, state, State::Font)?;
+					state.assert_font(&token)?;
 					font_version = Some(ver);
 				},
 
 				Token::Font { ref name } => {
-					assert_state(&token, state, State::Font)?;
+					state.assert_font(&token)?;
 					font_name = Some(name.into());
 				},
 
 				Token::Size { pt, xres, yres } => {
-					assert_state(&token, state, State::Font)?;
+					state.assert_font(&token)?;
 					font_size = Some(Size { pt, xres, yres });
 				},
 
@@ -92,7 +135,7 @@ impl Font {
 					xoff,
 					yoff
 				} => {
-					assert_state(&token, state, State::Font)?;
+					state.assert_font(&token)?;
 					font_bbox = Some(BoundingBox {
 						width: fbbx,
 						height: fbby,
@@ -102,18 +145,56 @@ impl Font {
 				},
 
 				Token::StartProperties { n } => {
-					assert_state(&token, state, State::Font)?;
+					state.assert_font(&token)?;
 					state = State::Properties { len: n };
 				},
 
 				Token::EndProperties {} => {
-					assert_state(&token, state, State::Properties { len: 0 })?;
+					let len = state.assert_properties(&token)?;
+					if len != 0 {
+						return Err(Error::UnexpectedEnd("Properties"));
+					}
 					state = State::Font;
 				},
 
 				Token::Chars { nglyphs } => {
-					assert_state(&token, state, State::Font)?;
+					state.assert_font(&token)?;
 					state = State::Chars { len: nglyphs };
+				},
+
+				Token::StartChar { ref name } => {
+					let chars = state.assert_chars(&token)?;
+					state = State::Glyph { chars };
+
+					glyph_name = Some(name.to_owned());
+					glyph_encoding = None;
+				},
+
+				Token::Encoding { enc } => {
+					state.assert_glyph(&token)?;
+					glyph_encoding = Some(enc);
+				},
+
+				Token::EndChar {} => {
+					let chars = state.assert_glyph(&token)?;
+					state = State::Chars { len: chars - 1 };
+
+					font_glyphs.insert(
+						Glyph {
+							name: glyph_name.take().unwrap(),
+							encoding: glyph_encoding
+								.ok_or(Error::MissingGlyphEncoding)?
+						}
+						.into()
+					);
+				},
+
+				Token::EndFont {} => {
+					let chars = state.assert_chars(&token)?;
+					if chars != 0 {
+						return Err(Error::UnexpectedEnd("Font"));
+					}
+					state = State::Final;
 				},
 
 				// ignored
@@ -121,12 +202,14 @@ impl Font {
 			};
 		}
 
+		// TODO check that state = final
 		Ok(Self {
 			version: font_version,
 			name: font_name.ok_or(Error::MissingFontName)?,
 			bbox: font_bbox.ok_or(Error::MissingFontBoundingBox)?,
 			size: font_size.ok_or(Error::MissingFontSize)?,
-			properties: font_properties
+			properties: font_properties,
+			glyphs: font_glyphs
 		})
 	}
 }

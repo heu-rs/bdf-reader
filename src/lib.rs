@@ -10,7 +10,7 @@ mod font;
 mod reader;
 mod tokens;
 
-pub use font::{BoundingBox, Font, Size, Value};
+pub use font::{BoundingBox, Font, Glyph, Size, Value};
 use reader::State;
 use tokens::Token;
 
@@ -23,7 +23,10 @@ pub enum Error {
 	SyntaxError(#[from] tokens::Error),
 
 	#[error("The token {0:?} may only appear in {2:?}, but is in {1:?}")]
-	InvalidContext(Token, State, State),
+	InvalidContext(Token, State, &'static str),
+
+	#[error("Unexpected end of context {0}")]
+	UnexpectedEnd(&'static str),
 
 	#[error("Missing font name")]
 	MissingFontName,
@@ -33,6 +36,9 @@ pub enum Error {
 
 	#[error("Missing font bounding box")]
 	MissingFontBoundingBox,
+
+	#[error("Missing glyph encoding")]
+	MissingGlyphEncoding,
 
 	#[error("Invalid Property Value: {0}. Note that strings need to be quoted.")]
 	InvalidPropertyValue(#[source] <i32 as FromStr>::Err)
