@@ -268,6 +268,19 @@ tokens! {
 		#[test("ENCODING 65", Encoding { enc: 65 })]
 		Encoding { "ENCODING", enc: u32 },
 
+		/// `BBX` is followed by BBw, the width of the black pixels in x, and BBh, the
+		/// height in y. These are followed by the x and y displacement, BBxoff0 and
+		/// BByoff0, of the lower left corner of the bitmap from origin 0. All values are
+		/// are an integer number of pixels.
+		///
+		/// If the font specifies metrics for writing direction 1, `VVECTOR` specifies the
+		/// offset from origin 0 to origin 1. For example, for writing direction 1, the
+		/// offset from origin 1 to the lower left corner of the bitmap would be:
+		///
+		/// BBxoff1x,y = BBxoff0x,y – `VVECTOR`
+		#[test("BBX 16 16 0 -2", BoundingBox { bbw: 16, bbh: 16, bbxoff: 0, bbyoff: -2 })]
+		BoundingBox { "BBX", bbw: u32, bbh: u32, bbxoff: i32, bbyoff: i32 },
+
 		/// `ENDCHAR` delimits the end of the glyph description
 		#[test("ENDCHAR", EndChar {})]
 		EndChar { "ENDCHAR" },

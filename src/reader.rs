@@ -81,6 +81,7 @@ impl Font {
 		let mut glyph_encoding = None;
 		let mut glyph_swidth = None;
 		let mut glyph_dwidth = None;
+		let mut glyph_bbox = None;
 
 		let mut state = State::Initial;
 		for line in reader.lines() {
@@ -210,11 +211,27 @@ impl Font {
 					glyph_encoding = None;
 					glyph_swidth = font_swidth;
 					glyph_dwidth = font_dwidth;
+					glyph_bbox = font_bbox;
 				},
 
 				Token::Encoding { enc } => {
 					state.assert_glyph(&token)?;
 					glyph_encoding = Some(enc);
+				},
+
+				Token::BoundingBox {
+					bbw,
+					bbh,
+					bbxoff,
+					bbyoff
+				} => {
+					state.assert_glyph(&token)?;
+					glyph_bbox = Some(BoundingBox {
+						width: bbw,
+						height: bbh,
+						offset_x: bbxoff,
+						offset_y: bbyoff
+					});
 				},
 
 				Token::EndChar {} => {
