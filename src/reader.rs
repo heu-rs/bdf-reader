@@ -25,6 +25,10 @@ pub enum State {
 	/// current one.
 	Glyph { chars: usize },
 
+	/// Inside the glyph bitmap, with `len` lines remaining and `chars` glyphs remaining
+	/// after the current one.
+	Bitmap { chars: usize, len: usize },
+
 	/// Final state
 	Final
 }
@@ -233,6 +237,8 @@ impl Font {
 						offset_y: bbyoff
 					});
 				},
+
+				Token::Bitmap {} => {},
 
 				Token::EndChar {} => {
 					let chars = state.assert_glyph(&token)?;

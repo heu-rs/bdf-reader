@@ -281,6 +281,15 @@ tokens! {
 		#[test("BBX 16 16 0 -2", BoundingBox { bbw: 16, bbh: 16, bbxoff: 0, bbyoff: -2 })]
 		BoundingBox { "BBX", bbw: u32, bbh: u32, bbxoff: i32, bbyoff: i32 },
 
+		/// `BITMAP` introduces the hexadecimal data for the character bitmap. From the
+		/// `BBX` value for h, find h lines of hex-encoded bitmap, padded on the right
+		/// with zero’s to the nearest byte (that is, multiple of 8). Hex data can be
+		/// turned into binary by taking two bytes at a time, each of which represents 4
+		/// bits of the 8-bit value. For example, the byte 01101101 is two hex digits: 6
+		/// (0110 in hex) and D (1101 in hex).
+		#[test("BITMAP", Bitmap {})]
+		Bitmap { "BITMAP" },
+
 		/// `ENDCHAR` delimits the end of the glyph description
 		#[test("ENDCHAR", EndChar {})]
 		EndChar { "ENDCHAR" },
