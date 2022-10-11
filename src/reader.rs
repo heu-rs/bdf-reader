@@ -1,4 +1,7 @@
-use crate::{tokens::Token, BoundingBox, Error, Font, Glyph, Size, Value};
+use crate::{
+	tokens::{Token, WritingDirection},
+	BoundingBox, Error, Font, Glyph, Size, Value
+};
 use std::{
 	collections::{BTreeSet, HashMap},
 	io::BufRead
@@ -67,13 +70,17 @@ impl Font {
 	pub fn read<R: BufRead>(reader: R) -> Result<Self, Error> {
 		let mut font_version = None;
 		let mut font_name = None;
-		let mut font_bbox = None;
 		let mut font_size = None;
+		let mut font_bbox = None;
+		let mut font_swidth = None;
+		let mut font_dwidth = None;
 		let mut font_properties = HashMap::new();
 		let mut font_glyphs = BTreeSet::new();
 
 		let mut glyph_name = None;
 		let mut glyph_encoding = None;
+		let mut glyph_swidth = None;
+		let mut glyph_dwidth = None;
 
 		let mut state = State::Initial;
 		for line in reader.lines() {
@@ -144,6 +151,39 @@ impl Font {
 					});
 				},
 
+				Token::MetricsSet {
+					dir: WritingDirection::Horizontal
+				} => {},
+				Token::MetricsSet { dir } => {
+					unimplemented!("METRICSSET {dir:?} is currently not supported");
+				},
+
+				Token::SWidth { swx0, swy0 } if matches!(state, State::Font) => {
+					font_swidth = Some((swx0, swy0));
+				},
+				Token::SWidth { swx0, swy0 } => {
+					state.assert_glyph(&token)?;
+					glyph_swidth = Some((swx0, swy0));
+				},
+
+				Token::DWidth { dwx0, dwy0 } if matches!(state, State::Font) => {
+					font_dwidth = Some((dwx0, dwy0));
+				},
+				Token::DWidth { dwx0, dwy0 } => {
+					state.assert_glyph(&token)?;
+					glyph_dwidth = Some((dwx0, dwy0));
+				},
+
+				Token::SWidthVertical { swx1, swy1 } => {
+					unimplemented!("SWIDTH1 {swx1} {swy1} is currently not supported");
+				},
+				Token::DWidthVertical { dwx1, dwy1 } => {
+					unimplemented!("DWIDTH1 {dwx1} {dwy1} is currently not supported");
+				},
+				Token::VVector { xoff, yoff } => {
+					unimplemented!("VVECTOR {xoff} {yoff} is currently not supported");
+				},
+
 				Token::StartProperties { n } => {
 					state.assert_font(&token)?;
 					state = State::Properties { len: n };
@@ -168,6 +208,8 @@ impl Font {
 
 					glyph_name = Some(name.to_owned());
 					glyph_encoding = None;
+					glyph_swidth = font_swidth;
+					glyph_dwidth = font_dwidth;
 				},
 
 				Token::Encoding { enc } => {

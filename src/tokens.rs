@@ -2,6 +2,30 @@ use paste::paste;
 use std::str::FromStr;
 use thiserror::Error;
 
+#[derive(Debug, Error)]
+#[error("No such variant: {0}")]
+pub struct NoSuchVariant(String);
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WritingDirection {
+	Horizontal = 0,
+	Vertical = 1,
+	Both = 2
+}
+
+impl FromStr for WritingDirection {
+	type Err = NoSuchVariant;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"0" => Ok(Self::Horizontal),
+			"1" => Ok(Self::Vertical),
+			"2" => Ok(Self::Both),
+			_ => Err(NoSuchVariant(s.into()))
+		}
+	}
+}
+
 macro_rules! tokens {
 	(
 		$(#[doc$($doc:tt)*])*
@@ -9,7 +33,11 @@ macro_rules! tokens {
 			$(
 				$(#[doc$($variant_doc:tt)*])*
 				$(#[test($test_input:literal, $test_expected:expr)])*
-				$variant:ident { $tag:literal $(, $arg:ident: $arg_ty:ident)* $(, ..$remaining:ident)? }
+				$variant:ident {
+					$tag:literal
+					$(, $arg:ident: $arg_ty:ident)*
+					$(, ..$remaining:ident)?
+				}
 			),*
 		}
 	) => {
@@ -50,7 +78,9 @@ macro_rules! tokens {
 			impl $ident {
 				#[allow(unused_assignments, unused_mut)]
 				$vis fn parse_line(line: &str) -> Result<Option<Self>, Error> {
-					let mut tokens = line.split(|ch: char| ch.is_ascii_whitespace()).peekable();
+					let mut tokens = line
+						.split(|ch: char| ch.is_ascii_whitespace())
+						.peekable();
 					if tokens.peek().is_none() {
 						return Ok(None);
 					}
@@ -147,7 +177,61 @@ tokens! {
 		)]
 		FontBoundingBox { "FONTBOUNDINGBOX", fbbx: u32, fbby: u32, xoff: i32, yoff: i32 },
 
-		// TODO metricsset
+		/// (Optional) The integer value of `METRICSSET  may be 0, 1, or 2, which
+		/// scorrepond to writing direction 0 only, 1 only, or both (respectively). If not
+		/// present, `METRICSSET` 0 is implied. If `METRICSSET` is 1, `DWIDTH` and
+		/// `SWIDTH` keywords are optional.
+		#[test("METRICSSET 0", MetricsSet { dir: WritingDirection::Horizontal })]
+		#[test("METRICSSET 1", MetricsSet { dir: WritingDirection::Vertical })]
+		#[test("METRICSSET 2", MetricsSet { dir: WritingDirection::Both })]
+		MetricsSet { "METRICSSET", dir: WritingDirection },
+
+		/// `SWIDTH` is followed by swx0 and swy0, the scalable width of the glyph in x
+		/// and y for writing mode 0. The scalable widths are of type Number and are in
+		/// units of 1/1000th of the size of the glyph and correspond to the widths found
+		/// in AFM files (for outline fonts). If the size of the glyph is p points, the
+		/// width information must be scaled by p/1000 to get the width of the glyph in
+		/// printer’s points. This width information should be regarded as a vector
+		/// indicating the position of the next glyph’s origin relative to the origin of
+		/// this glyph. `SWIDTH` is mandatory for all writing mode 0 fonts.
+		///
+		/// To convert the scalable width to the width in device pixels, multiply `SWIDTH`
+		/// times p/1000 times r/72, where r is the device resolution in pixels per inch.
+		/// The result is a real number giving the ideal width in device pixels. The
+		/// actual device width must be an integral number of device pixels and is given
+		/// by the `DWIDTH` entry.
+		#[test("SWIDTH 1000 0", SWidth { swx0: 1000.0, swy0: 0.0 })]
+		SWidth { "SWIDTH", swx0: f64, swy0: f64 },
+
+		/// `DWIDTH` specifies the widths in x and y, dwx0 and dwy0, in device pixels.
+		/// Like `SWIDTH`, this width information is a vector indicating the position of
+		/// the next glyph’s origin relative to the origin of this glyph. `DWIDTH` is
+		/// mandatory for all writing mode 0 fonts.
+		#[test("DWIDTH 16 0", DWidth { dwx0: 16.0, dwy0: 0.0 })]
+		DWidth { "DWIDTH", dwx0: f64, dwy0: f64 },
+
+		/// `SWIDTH1` is followed by the values for swx1 and swy1, the scalable width of
+		/// the glyph in x and y, for writing mode 1 (vertical direction). The values are
+		/// of type Number, and represent the widths in glyph space coordinates.
+		#[test("SWIDTH1 1000 0", SWidthVertical { swx1: 1000.0, swy1: 0.0 })]
+		SWidthVertical { "SWIDTH1", swx1: f64, swy1: f64 },
+
+		/// `DWIDTH1` specifies the integer pixel width of the glyph in x and y. Like
+		/// `SWIDTH1`, this width information is a vector indicating the position of the
+		/// next glyph’s origin relative to the origin of this glyph. `DWIDTH1` is
+		/// mandatory for all writing mode 1 fonts.
+		#[test("DWIDTH1 16 0", DWidthVertical { dwx1: 16.0, dwy1: 0.0 })]
+		DWidthVertical { "DWIDTH1", dwx1: f64, dwy1: f64 },
+
+		/// `VVECTOR` (optional) specifies the components of a vector from origin 0 (the
+		/// origin for writing direction 0) to origin 1 (the origin for writing direction
+		/// 1). If the value of `METRICSSET` is 1 or 2, `VVECTOR` must be specified either
+		/// at the global level, or for each individual glyph. If specified at the global
+		/// level, the `VVECTOR` is the same for all glyphs, though the inclusion of this
+		/// keyword in an individual glyph has the effect of overriding the bal value for
+		/// that specific glyph.
+		#[test("VVECTOR 1 1", VVector { xoff: 1.0, yoff: 1.0 })]
+		VVector { "VVECTOR", xoff: f64, yoff: f64 },
 
 		/// The optional word `STARTPROPERTIES` may be followed by the number of
 		/// properties (n) that follow. Within the properties list, there may be n lines
@@ -191,6 +275,6 @@ tokens! {
 		/// The entire file is terminated with the word `ENDFONT`. If this is encountered
 		/// before all of the glyphs have been read, it is an error cond
 		#[test("ENDFONT", EndFont {})]
-		EndFont { "ENDFONT"}
+		EndFont { "ENDFONT" }
 	}
 }
