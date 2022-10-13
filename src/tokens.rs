@@ -34,9 +34,10 @@ macro_rules! tokens {
 				$(#[doc$($variant_doc:tt)*])*
 				$(#[test($test_input:literal, $test_expected:expr)])*
 				$variant:ident {
-					$tag:literal
-					$(, $arg:ident: $arg_ty:ident)*
-					$(, ..$remaining:ident)?
+					$tag:literal $(,
+						$($arg:ident: $arg_ty:ident),* $(,)?
+						$(..$remaining:ident)?
+					)?
 				}
 			),*
 		}
@@ -48,7 +49,7 @@ macro_rules! tokens {
 			$vis enum $ident {
 				$(
 					$(#[doc$($variant_doc)*])*
-					$variant { $($arg: $arg_ty,)* $($remaining: String)? }
+					$variant $({ $($arg: $arg_ty,)* $($remaining: String)? })?
 				),*
 			}
 
@@ -56,13 +57,15 @@ macro_rules! tokens {
 			pub enum Error {
 				$(
 					$(
-						#[error(
-							"Failed to parse argument {} of tag {}: {0}",
-							stringify!($arg),
-							$tag
-						)]
-						[<$variant $arg:camel>](#[source] <$arg_ty as FromStr>::Err),
-					)*
+						$(
+							#[error(
+								"Failed to parse argument {} of tag {}: {0}",
+								stringify!($arg),
+								$tag
+							)]
+							[<$variant $arg:camel>](#[source] <$arg_ty as FromStr>::Err),
+						)*
+					)?
 				)*
 
 				#[error("Missing the argument {1} of tag {0}")]
@@ -90,28 +93,30 @@ macro_rules! tokens {
 							tokens.next().unwrap();
 							let mut empty = tokens.peek().is_none();
 							$(
-								let $arg: $arg_ty = tokens
-									.next()
-									.ok_or(Error::MissingArg($tag, stringify!($arg)))?
-									.parse()
-									.map_err(|err| Error::[<$variant $arg:camel>](err))?;
-								empty = tokens.peek().is_none();
-							)*
-							$(
-								let $remaining = tokens
-									.fold(String::new(), |mut rem, token| {
-										if !rem.is_empty() {
-											rem += " ";
-										}
-										rem += token;
-										rem
-									});
-								empty = true;
+								$(
+									let $arg: $arg_ty = tokens
+										.next()
+										.ok_or(Error::MissingArg($tag, stringify!($arg)))?
+										.parse()
+										.map_err(Error::[<$variant $arg:camel>])?;
+									empty = tokens.peek().is_none();
+								)*
+								$(
+									let $remaining = tokens
+										.fold(String::new(), |mut rem, token| {
+											if !rem.is_empty() {
+												rem += " ";
+											}
+											rem += token;
+											rem
+										});
+									empty = true;
+								)?
 							)?
 							if !empty {
 								return Err(Error::ExtraTokens($tag));
 							}
-							return Ok(Some(Self::$variant { $($arg,)* $($remaining)? }));
+							return Ok(Some(Self::$variant $({ $($arg,)* $($remaining)? })?));
 						}
 					)*
 

@@ -203,7 +203,7 @@ impl Font {
 					state = State::Properties { len: n };
 				},
 
-				Token::EndProperties {} => {
+				Token::EndProperties => {
 					let len = state.assert_properties(&token)?;
 					if len != 0 {
 						return Err(Error::UnexpectedEnd("Properties"));
@@ -248,7 +248,7 @@ impl Font {
 					});
 				},
 
-				Token::Bitmap {} => {
+				Token::Bitmap => {
 					let chars = state.assert_glyph(&token)?;
 					state = State::Bitmap {
 						chars,
@@ -257,7 +257,7 @@ impl Font {
 					}
 				},
 
-				Token::EndChar {} => {
+				Token::EndChar => {
 					let (chars, len) = state.assert_bitmap(&token)?;
 					if len != 0 {
 						return Err(Error::UnexpectedEnd("Char"));
@@ -277,7 +277,7 @@ impl Font {
 					);
 				},
 
-				Token::EndFont {} => {
+				Token::EndFont => {
 					let chars = state.assert_chars(&token)?;
 					if chars != 0 {
 						return Err(Error::UnexpectedEnd("Font"));
