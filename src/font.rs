@@ -1,3 +1,4 @@
+use crate::Bitmap;
 use std::{
 	borrow::Borrow,
 	cmp::Ordering,
@@ -47,7 +48,8 @@ impl Display for Value {
 #[derive(Clone, Debug)]
 pub struct Glyph {
 	pub(crate) name: String,
-	pub(crate) encoding: u32
+	pub(crate) encoding: u32,
+	pub(crate) bitmap: Bitmap
 }
 
 impl Glyph {
@@ -59,6 +61,11 @@ impl Glyph {
 	/// Get the encoding value of this glyph.
 	pub fn encoding(&self) -> u32 {
 		self.encoding
+	}
+
+	/// Get the bitmap of this glyph.
+	pub fn bitmap(&self) -> &Bitmap {
+		&self.bitmap
 	}
 }
 

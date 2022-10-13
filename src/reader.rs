@@ -1,10 +1,11 @@
 use crate::{
 	tokens::{Token, WritingDirection},
-	BoundingBox, Error, Font, Glyph, Size, Value
+	Bitmap, BoundingBox, Error, Font, Glyph, Size, Value
 };
 use std::{
 	collections::{BTreeSet, HashMap},
-	io::BufRead
+	io::BufRead,
+	mem
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -68,6 +69,13 @@ impl State {
 			_ => Err(Error::InvalidContext(token.clone(), self, "Glyph"))
 		}
 	}
+
+	fn assert_bitmap(self, token: &Token) -> Result<(usize, usize), Error> {
+		match self {
+			Self::Bitmap { chars, len } => Ok((chars, len)),
+			_ => Err(Error::InvalidContext(token.clone(), self, "Bitmap"))
+		}
+	}
 }
 
 impl Font {
@@ -86,6 +94,7 @@ impl Font {
 		let mut glyph_swidth = None;
 		let mut glyph_dwidth = None;
 		let mut glyph_bbox = None;
+		let mut glyph_bitmap = Vec::new();
 
 		let mut state = State::Initial;
 		for line in reader.lines() {
@@ -216,6 +225,7 @@ impl Font {
 					glyph_swidth = font_swidth;
 					glyph_dwidth = font_dwidth;
 					glyph_bbox = font_bbox;
+					glyph_bitmap.clear();
 				},
 
 				Token::Encoding { enc } => {
@@ -238,17 +248,30 @@ impl Font {
 					});
 				},
 
-				Token::Bitmap {} => {},
+				Token::Bitmap {} => {
+					let chars = state.assert_glyph(&token)?;
+					state = State::Bitmap {
+						chars,
+						len: glyph_bbox.ok_or(Error::MissingGlyphBoundingBox)?.height
+							as usize
+					}
+				},
 
 				Token::EndChar {} => {
-					let chars = state.assert_glyph(&token)?;
+					let (chars, len) = state.assert_bitmap(&token)?;
+					if len != 0 {
+						return Err(Error::UnexpectedEnd("Char"));
+					}
 					state = State::Chars { len: chars - 1 };
 
 					font_glyphs.insert(
 						Glyph {
 							name: glyph_name.take().unwrap(),
 							encoding: glyph_encoding
-								.ok_or(Error::MissingGlyphEncoding)?
+								.ok_or(Error::MissingGlyphEncoding)?,
+							bitmap: Bitmap {
+								data: mem::take(&mut glyph_bitmap)
+							}
 						}
 						.into()
 					);

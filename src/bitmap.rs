@@ -1,5 +1,6 @@
 use bit_vec::BitVec;
 
+#[derive(Clone, Debug)]
 pub struct Bitmap {
-	data: Vec<BitVec<u8>>
+	pub(crate) data: Vec<BitVec<u8>>
 }

@@ -6,10 +6,12 @@
 use std::{io, str::FromStr};
 use thiserror::Error;
 
+mod bitmap;
 mod font;
 mod reader;
 mod tokens;
 
+pub use bitmap::Bitmap;
 pub use font::{BoundingBox, Font, Glyph, Size, Value};
 use reader::State;
 use tokens::Token;
@@ -39,6 +41,9 @@ pub enum Error {
 
 	#[error("Missing glyph encoding")]
 	MissingGlyphEncoding,
+
+	#[error("Missing glyph bounding box")]
+	MissingGlyphBoundingBox,
 
 	#[error("Invalid Property Value: {0}. Note that strings need to be quoted.")]
 	InvalidPropertyValue(#[source] <i32 as FromStr>::Err)
