@@ -98,7 +98,8 @@ impl Font {
 		let mut glyph_bitmap = Vec::new();
 
 		let mut state = State::Initial;
-		for line in reader.lines() {
+		for (ll, line) in reader.lines().enumerate().map(|(ll, line)| (ll + 1, line)) {
+			println!("Parsing line {ll} ...");
 			let line = line?;
 
 			match &mut state {
