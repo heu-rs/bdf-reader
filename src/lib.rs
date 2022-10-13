@@ -46,5 +46,8 @@ pub enum Error {
 	MissingGlyphBoundingBox,
 
 	#[error("Invalid Property Value: {0}. Note that strings need to be quoted.")]
-	InvalidPropertyValue(#[source] <i32 as FromStr>::Err)
+	InvalidPropertyValue(#[source] <i32 as FromStr>::Err),
+
+	#[error("Invalid bitmap value: {0}")]
+	InvalidBitmapValue(String)
 }

@@ -2,6 +2,7 @@ use crate::{
 	tokens::{Token, WritingDirection},
 	Bitmap, BoundingBox, Error, Font, Glyph, Size, Value
 };
+use bit_vec::BitVec;
 use std::{
 	collections::{BTreeSet, HashMap},
 	io::BufRead,
@@ -121,6 +122,25 @@ impl Font {
 					*len -= 1;
 					continue;
 				},
+
+				State::Bitmap { len, .. } if *len > 0 => {
+					let mut iter = line.chars().filter(|ch| ch.is_ascii_hexdigit());
+					let mut raw = Vec::new();
+					while let Some(first) = iter.next() {
+						let second = iter.next().ok_or_else(|| {
+							Error::InvalidBitmapValue(format!("{first}"))
+						})?;
+						let hex = format!("{first}{second}");
+						let byte = u8::from_str_radix(&hex, 16)
+							.map_err(|_| Error::InvalidBitmapValue(hex))?;
+						raw.push(byte);
+					}
+					glyph_bitmap.push(BitVec::from_bytes(&raw));
+
+					*len -= 1;
+					continue;
+				},
+
 				_ => {}
 			}
 
