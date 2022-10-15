@@ -82,6 +82,7 @@ macro_rules! tokens {
 				#[allow(unused_assignments, unused_mut)]
 				$vis fn parse_line(line: &str) -> Result<Option<Self>, Error> {
 					let mut tokens = line
+						.trim_end()
 						.split(|ch: char| ch.is_ascii_whitespace())
 						.peekable();
 					if tokens.peek().is_none() {

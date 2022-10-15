@@ -3,6 +3,7 @@ use crate::{
 	Bitmap, BoundingBox, Error, Font, Glyph, Size, Value
 };
 use bit_vec::BitVec;
+use log::debug;
 use std::{
 	collections::{BTreeSet, HashMap},
 	io::BufRead,
@@ -99,8 +100,8 @@ impl Font {
 
 		let mut state = State::Initial;
 		for (ll, line) in reader.lines().enumerate().map(|(ll, line)| (ll + 1, line)) {
-			println!("Parsing line {ll} ...");
 			let line = line?;
+			debug!("Parsing line {ll} {line:?}, state={state:?}");
 
 			match &mut state {
 				State::Properties { len } if *len > 0 => {
