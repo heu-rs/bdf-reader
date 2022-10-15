@@ -36,16 +36,16 @@ impl Bitmap<'_> {
 		for y in 0 .. self.height() {
 			for x in 0 .. self.width() {
 				if self.get(x, y).unwrap() {
-					buf += "##";
+					buf += "🮊▊";
 				} else {
-					buf += "..";
+					buf += "··";
 				}
 			}
 			buf += "\n";
 
 			if y == self.baseline() {
 				for _ in 0 .. self.width() {
-					buf += "--";
+					buf += "──";
 				}
 				buf += "\n";
 			}
