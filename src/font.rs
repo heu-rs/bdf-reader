@@ -1,4 +1,5 @@
 use crate::Bitmap;
+use bit_vec::BitVec;
 use std::{
 	borrow::Borrow,
 	cmp::Ordering,
@@ -49,7 +50,10 @@ impl Display for Value {
 pub struct Glyph {
 	pub(crate) name: String,
 	pub(crate) encoding: u32,
-	pub(crate) bitmap: Bitmap
+	pub(crate) swidth: Option<(f64, f64)>,
+	pub(crate) dwidth: Option<(f64, f64)>,
+	pub(crate) bbox: BoundingBox,
+	pub(crate) bitmap: Vec<BitVec>
 }
 
 impl Glyph {
@@ -63,9 +67,27 @@ impl Glyph {
 		self.encoding
 	}
 
+	/// Get the space width of this glyph.
+	pub fn swidth(&self) -> Option<(f64, f64)> {
+		self.swidth
+	}
+
+	/// Get the device width of this glyph.
+	pub fn dwidth(&self) -> Option<(f64, f64)> {
+		self.dwidth
+	}
+
+	/// Get the bounding box of this glyph.
+	pub fn bounding_box(&self) -> BoundingBox {
+		self.bbox
+	}
+
 	/// Get the bitmap of this glyph.
-	pub fn bitmap(&self) -> &Bitmap {
-		&self.bitmap
+	pub fn bitmap(&self) -> Bitmap<'_> {
+		Bitmap {
+			data: &self.bitmap,
+			bbox: self.bbox
+		}
 	}
 }
 

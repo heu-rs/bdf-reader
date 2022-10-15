@@ -14,4 +14,9 @@ paste = "1.0"
 thiserror = "1.0"
 
 [dev-dependencies]
+indoc = "1.0"
+pretty_assertions = "1.0"
 simple_logger = "2.3"
+
+[profile.test]
+opt-level = 2

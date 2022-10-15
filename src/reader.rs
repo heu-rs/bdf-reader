@@ -1,6 +1,6 @@
 use crate::{
 	tokens::{Token, WritingDirection},
-	Bitmap, BoundingBox, Error, Font, Glyph, Size, Value
+	BoundingBox, Error, Font, Glyph, Size, Value
 };
 use bit_vec::BitVec;
 use log::debug;
@@ -291,9 +291,10 @@ impl Font {
 							name: glyph_name.take().unwrap(),
 							encoding: glyph_encoding
 								.ok_or(Error::MissingGlyphEncoding)?,
-							bitmap: Bitmap {
-								data: mem::take(&mut glyph_bitmap)
-							}
+							swidth: glyph_swidth,
+							dwidth: glyph_dwidth,
+							bbox: glyph_bbox.ok_or(Error::MissingGlyphBoundingBox)?,
+							bitmap: mem::take(&mut glyph_bitmap)
 						}
 						.into()
 					);
