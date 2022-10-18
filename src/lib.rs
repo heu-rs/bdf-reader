@@ -4,19 +4,19 @@
 #![forbid(elided_lifetimes_in_paths, unsafe_code)]
 
 //! # BDF Reader
-//! 
+//!
 //! A reader for the BDF ([Glyph Bitmap Distribution Format][wikipedia]) font format.
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```rust,edition2021
 //! use bdf_reader::Font;
 //! use std::{fs::File, io::BufReader};
-//! 
+//!
 //! let reader = BufReader::new(File::open("path/to/font.bdf")?);
 //! let font = Font::read(reader)?;
 //! ```
-//! 
+//!
 //!  [wikipedia]: https://en.wikipedia.org/wiki/Glyph_Bitmap_Distribution_Format
 
 use std::{io, str::FromStr};

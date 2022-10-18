@@ -80,14 +80,11 @@ macro_rules! tokens {
 
 			impl $ident {
 				#[allow(unused_assignments, unused_mut)]
-				$vis fn parse_line(line: &str) -> Result<Option<Self>, Error> {
+				$vis fn parse_line(line: &str) -> Result<Self, Error> {
 					let mut tokens = line
 						.trim_end()
 						.split(|ch: char| ch.is_ascii_whitespace())
 						.peekable();
-					if tokens.peek().is_none() {
-						return Ok(None);
-					}
 
 					$(
 						if tokens.peek() == Some(&$tag) {
@@ -117,7 +114,7 @@ macro_rules! tokens {
 							if !empty {
 								return Err(Error::ExtraTokens($tag));
 							}
-							return Ok(Some(Self::$variant $({ $($arg,)* $($remaining)? })?));
+							return Ok(Self::$variant $({ $($arg,)* $($remaining)? })?);
 						}
 					)*
 
@@ -130,10 +127,10 @@ macro_rules! tokens {
 				#[test]
 				fn [<test_ $ident:lower _parse_ $variant:lower>]() {
 					$(
-						let expected: Option<$ident> = Some({
+						let expected: $ident = {
 							use $ident::*;
 							$test_expected
-						});
+						};
 						assert_eq!(expected, $ident::parse_line($test_input).unwrap());
 					)*
 				}

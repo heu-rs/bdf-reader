@@ -101,6 +101,10 @@ impl Font {
 		let mut state = State::Initial;
 		for (ll, line) in reader.lines().enumerate().map(|(ll, line)| (ll + 1, line)) {
 			let line = line?;
+			if line.trim().is_empty() {
+				debug!("Skipping blank line {ll}");
+				continue;
+			}
 			debug!("Parsing line {ll} {line:?}, state={state:?}");
 
 			match &mut state {
@@ -146,11 +150,7 @@ impl Font {
 				_ => {}
 			}
 
-			let token = match Token::parse_line(&line)? {
-				Some(token) => token,
-				None => continue
-			};
-
+			let token = Token::parse_line(&line)?;
 			match token {
 				Token::StartFont { .. } => {
 					state.assert_initial(&token)?;
