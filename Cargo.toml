@@ -1,12 +1,14 @@
 [package]
 name = "bdf-reader"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 license = "EPL-2.0"
 description = "BDF font format reader"
-repository = "https://github.com/heu-rs/bdf-reader"
 keywords = ["bdf", "bitmap", "font"]
+
+repository = "https://github.com/heu-rs/bdf-reader"
+include = ["Cargo.toml", "README.md", "LICENSE-EPL-2.0", "src/**/*.rs"]
 
 [dependencies]
 bit-vec = "0.6"
